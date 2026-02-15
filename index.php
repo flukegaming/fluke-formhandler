@@ -1,8 +1,16 @@
 <?php
     header('Content-Type: application/json');
-    header('Access-Control-Allow-Origin: https://flukegaming.com');
-    header('Access-Control-Allow-Origin: https://test.flukegaming.com');
-    header('Access-Control-Allow-Methods: POST');
+    $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+    $allowedOrigins = [
+        'https://flukegaming.com',
+        'https://test.flukegaming.com'
+    ];
+
+    if (in_array($origin, $allowedOrigins)) {
+        header("Access-Control-Allow-Origin: $origin");
+    }
+
+    header('Access-Control-Allow-Methods: POST, OPTIONS');
     header('Access-Control-Allow-Headers: Content-Type');
 
     // Handle preflight
