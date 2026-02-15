@@ -4,3 +4,8 @@ compatibility_date = "2026-02-15"
 
 [env.production]
 # Add your secrets here later
+
+[observability]
+[observability.logs]
+enabled = true
+invocation_logs = true
