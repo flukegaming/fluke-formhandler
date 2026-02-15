@@ -53,7 +53,7 @@ export default {
 };
 
 async function insertSheetRow(data) {
-  const SHEET_ID = env.SHEETS_ID; // Worker env var
+  const SHEET_ID = SHEETS_ID; // Worker env var
   const SHEET_NAME = 'test_data';
   const token = await createGoogleJWT();
 
@@ -196,7 +196,7 @@ async function createGoogleJWT() {
   const header = { alg: 'RS256', typ: 'JWT' };
   const now = Math.floor(Date.now() / 1000);
   const payload = {
-    iss: env.SERVICE_ACCOUNT_EMAIL, // Worker env var
+    iss: SERVICE_ACCOUNT_EMAIL, // Worker env var
     scope: 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/gmail.send',
     aud: 'https://oauth2.googleapis.com/token',
     exp: now + 3600,
@@ -207,7 +207,7 @@ async function createGoogleJWT() {
   const signature = await crypto.subtle.sign(
     'RSASSA-PKCS1-v1_5', 
     await crypto.subtle.importKey('pkcs8', 
-      new Uint8Array(atob(env.PRIVATE_KEY).split('').map(c => c.charCodeAt(0))), // Worker env var
+      new Uint8Array(atob(PRIVATE_KEY).split('').map(c => c.charCodeAt(0))), // Worker env var
       { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' }, true, ['sign']
     ),
     new TextEncoder().encode(encoded)
