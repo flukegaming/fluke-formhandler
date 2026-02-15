@@ -2,9 +2,9 @@ import { env } from "cloudflare:workers";
 
 const SHEET_ID = env.SHEETS_ID;
 const SERVICE_ACCOUNT_EMAIL = env.SERVICE_ACCOUNT_EMAIL;
-const PRIVATE_KEY = env.PRIVATE_KEY
-  .replace(/\\n/g, '\n')        // Unescape literal \n
-  .replace(/\r?\n|\r/g, '\\n')  // Normalize newlines to literal \n
+let PRIVATE_KEY = env.PRIVATE_KEY
+  .replace(/\\n/g, '\n')  // Convert literal \n to real newlines FIRST
+  .replace(/[^\\]---/g, '\n---')  // Fix header/footer alignment
   .trim();
 
 export default {
@@ -204,7 +204,7 @@ async function createGoogleJWT() {
   const header = { alg: 'RS256', typ: 'JWT' };
   const now = Math.floor(Date.now() / 1000);
   const payload = {
-    iss: SERVICE_ACCOUNT_EMAIL, // Worker env var
+    iss: SERVICE_ACCOUNT_EMAIL,
     scope: 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/gmail.send',
     aud: 'https://oauth2.googleapis.com/token',
     exp: now + 3600,
@@ -212,12 +212,21 @@ async function createGoogleJWT() {
   };
   
   const encoded = btoa(JSON.stringify(header)) + '.' + btoa(JSON.stringify(payload));
+  const keyData = Uint8Array.from(atob(PRIVATE_KEY), c => c.charCodeAt(0));
+  const cryptoKey = await crypto.subtle.importKey(
+    'pkcs8', 
+    keyData,
+    { 
+      name: 'RSASSA-PKCS1-v1_5', 
+      hash: 'SHA-256' 
+    }, 
+    true, 
+    ['sign']
+  );
+  
   const signature = await crypto.subtle.sign(
     'RSASSA-PKCS1-v1_5', 
-    await crypto.subtle.importKey('pkcs8', 
-      new Uint8Array(atob(PRIVATE_KEY).split('').map(c => c.charCodeAt(0))), // Worker env var
-      { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' }, true, ['sign']
-    ),
+    cryptoKey,
     new TextEncoder().encode(encoded)
   );
   
@@ -229,6 +238,5 @@ async function createGoogleJWT() {
     body: `grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&assertion=${jwt}`
   });
   
-  const tokenData = await tokenResponse.json();
-  return tokenData.access_token;
+  return (await tokenResponse.json()).access_token;
 }
