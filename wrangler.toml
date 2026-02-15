@@ -1,4 +1,4 @@
-name = "form-handler.flukegaming57.workers.dev"
+name = "form-handler"
 main = "src/index.js"
 compatibility_date = "2026-02-15"
 
