@@ -2,7 +2,10 @@ import { env } from "cloudflare:workers";
 
 const SHEET_ID = env.SHEETS_ID;
 const SERVICE_ACCOUNT_EMAIL = env.SERVICE_ACCOUNT_EMAIL;
-const PRIVATE_KEY = env.PRIVATE_KEY;
+const PRIVATE_KEY = env.PRIVATE_KEY
+  .replace(/\\n/g, '\n')        // Unescape literal \n
+  .replace(/\r?\n|\r/g, '\\n')  // Normalize newlines to literal \n
+  .trim();
 
 export default {
   async fetch(request) {
