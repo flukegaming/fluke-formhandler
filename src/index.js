@@ -1,5 +1,5 @@
 export default {
-  async fetch(request) {
+  async fetch(request, env) {
     const origin = request.headers.get('Origin');
     const allowedOrigins = [
       'https://test.flukegaming.com',
@@ -27,8 +27,8 @@ export default {
     try {
       const formData = await request.json();
       
-      await insertSheetRow(formData);
-      await sendRaidEmail(formData);
+      await insertSheetRow(formData, env);
+      await sendRaidEmail(formData, env);
       
       return Response.json({ 
         success: true, 
@@ -52,10 +52,10 @@ export default {
   }
 };
 
-async function insertSheetRow(data) {
-  const SHEET_ID = SHEETS_ID; // Worker env var
+async function insertSheetRow(data, env) {
+  const SHEET_ID = env.SHEETS_ID; // Worker env var
   const SHEET_NAME = 'test_data';
-  const token = await createGoogleJWT();
+  const token = await createGoogleJWT(env);
 
   // STEP 1: Insert EMPTY row BELOW header (row 2)
   const insertResponse = await fetch(
@@ -119,8 +119,8 @@ async function insertSheetRow(data) {
   }
 }
 
-async function sendRaidEmail(data) {
-  const token = await createGoogleJWT();
+async function sendRaidEmail(data, env) {
+  const token = await createGoogleJWT(env);
   
   const subject = `New Raid Signup: ${data.Season || 'N/A'} - ${data.Name || 'Unnamed'} (${data.MainClass || 'No class'})`;
   const body = `
@@ -155,8 +155,8 @@ ${body}`)
   });
 }
 
-async function sendErrorEmail(request, error) {
-  const token = await createGoogleJWT();
+async function sendErrorEmail(request, error, env) {
+  const token = await createGoogleJWT(env);
   
   const errorData = await request.json().catch(() => ({}));
   const subject = 'Raid Form Failure - ' + new Date().toISOString();
@@ -192,11 +192,11 @@ ${body}`)
   });
 }
 
-async function createGoogleJWT() {
+async function createGoogleJWT(env) {
   const header = { alg: 'RS256', typ: 'JWT' };
   const now = Math.floor(Date.now() / 1000);
   const payload = {
-    iss: SERVICE_ACCOUNT_EMAIL, // Worker env var
+    iss: env.SERVICE_ACCOUNT_EMAIL, // Worker env var
     scope: 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/gmail.send',
     aud: 'https://oauth2.googleapis.com/token',
     exp: now + 3600,
@@ -207,7 +207,7 @@ async function createGoogleJWT() {
   const signature = await crypto.subtle.sign(
     'RSASSA-PKCS1-v1_5', 
     await crypto.subtle.importKey('pkcs8', 
-      new Uint8Array(atob(PRIVATE_KEY).split('').map(c => c.charCodeAt(0))), // Worker env var
+      new Uint8Array(atob(env.PRIVATE_KEY).split('').map(c => c.charCodeAt(0))), // Worker env var
       { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' }, true, ['sign']
     ),
     new TextEncoder().encode(encoded)
