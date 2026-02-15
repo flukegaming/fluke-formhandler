@@ -1,0 +1,6 @@
+name = "raid-signup"
+main = "src/index.js"
+compatibility_date = "2026-02-15"
+
+[env.production]
+# Add your secrets here later
