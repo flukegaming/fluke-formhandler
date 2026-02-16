@@ -1,44 +1,53 @@
+// -------------------------
+// Worker
+// -------------------------
 export default {
   async fetch(req, env) {
+    // 1️⃣ Preflight always exits fast
     if (req.method === "OPTIONS") {
-      return corsResponse(JSON.stringify({}), req, 204);
+      return corsResponse("{}", req, 204);
     }
 
+    // 2️⃣ Only allow POST for actual submissions
     if (req.method !== "POST") {
       return corsResponse(JSON.stringify({ error: "POST only" }), req, 405);
     }
-
-    const now = new Date();
-    const timestamp = `${now.getFullYear()}-${(now.getMonth()+1).toString().padStart(2,'0')}-${now.getDate().toString().padStart(2,'0')} ${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}:${now.getSeconds().toString().padStart(2,'0')}`;
-    // 2026-02-16 04:56:42
-
-    const signup = await req.json();
-    const data = [
-      timestamp,
-      signup.Season || '',
-      signup.Name || '',
-      signup.MainClass || '',
-      signup.MainSpec || '',
-      signup.MainOffspec || '',
-      signup.AltClass || '',
-      signup.AltSpec || '',
-      signup.AltOffspec || '',
-      signup.Comments || ''
-    ];
 
     let appendStatus = "not attempted";
     let emailStatus = "not attempted";
 
     try {
+      const signup = await req.json();
+
+      const now = new Date();
+      const timestamp = `${now.getFullYear()}-${(now.getMonth()+1).toString().padStart(2,'0')}-${now.getDate().toString().padStart(2,'0')} ${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}:${now.getSeconds().toString().padStart(2,'0')}`;
+
+      const data = [
+        timestamp,
+        signup.Season || '',
+        signup.Name || '',
+        signup.MainClass || '',
+        signup.MainSpec || '',
+        signup.MainOffspec || '',
+        signup.AltClass || '',
+        signup.AltSpec || '',
+        signup.AltOffspec || '',
+        signup.Comments || ''
+      ];
+
       const tokenJson = await getGoogleAccessToken(env);
       const token = tokenJson.access_token;
 
-      // 1️⃣ append row
+      // -------------------------
+      // Append
+      // -------------------------
       try {
         await appendRow(token, env, "signup_data", data);
         appendStatus = "success";
 
-        // 2️⃣ send success email
+        // -------------------------
+        // ✅ Email on success
+        // -------------------------
         try {
           await sendEmail(env, "Raid Form Submission Success", `Row added: ${JSON.stringify(data)}`);
           emailStatus = "success";
@@ -49,7 +58,9 @@ export default {
       } catch (appendErr) {
         appendStatus = `failed: ${appendErr.message}`;
 
-        // Send failure email if append failed
+        // -------------------------
+        // ⛔ Email on failure
+        // -------------------------
         try {
           await sendEmail(
             env,
@@ -65,33 +76,42 @@ export default {
       return corsResponse(JSON.stringify({ appendStatus, emailStatus }), req);
 
     } catch (err) {
-      // fallback in case getGoogleAccessToken itself fails
-      return corsResponse(JSON.stringify({ appendStatus: "failed", emailStatus: "failed", error: err.message }), req, 500);
+      return corsResponse(
+        JSON.stringify({ appendStatus: "failed", emailStatus: "failed", error: err.message }),
+        req,
+        500
+      );
     }
   }
 };
 
 // -------------------------
-// corsResponse header
+// corsResponse helpers
 // -------------------------
 const ALLOWED_ORIGINS = [
   "https://flukegaming.com",
   "https://test.flukegaming.com"
 ];
 
-function corsResponse(body, req, status = 200) {
-  const origin = req.headers.get("Origin");
+function corsHeaders(req) {
+  const origin = req.headers.get("Origin") || "";
+  console.log("Request origin:", origin);
+
   const headers = {
-    "Content-Type": "application/json",
     "Access-Control-Allow-Methods": "POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type"
+    "Access-Control-Allow-Headers": "Content-Type",
+    "Content-Type": "application/json",
   };
 
   if (ALLOWED_ORIGINS.includes(origin)) {
     headers["Access-Control-Allow-Origin"] = origin;
   }
 
-  return new Response(body, { status, headers });
+  return headers;
+}
+
+function corsResponse(body, req, status = 200) {
+  return new Response(body, { status, headers: corsHeaders(req) });
 }
 
 // -------------------------
