@@ -5,7 +5,7 @@ export default {
   async fetch(req, env) {
     // 1️⃣ Preflight always exits fast
     if (req.method === "OPTIONS") {
-      return corsResponse("{}", req, 204);
+      return corsResponse(null, req, 204);
     }
 
     // 2️⃣ Only allow POST for actual submissions
