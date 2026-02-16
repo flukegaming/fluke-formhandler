@@ -18,7 +18,7 @@ export default {
       const token = tokenJson.access_token;
 
       // 2️⃣ append row
-      await appendRow(token, env, data);
+      await appendRow(token, env, "signup_data", data);
 
       // 3️⃣ send notification email (stub for now)
       await sendEmail(env, "Raid Form Submission Success", `Row added: ${JSON.stringify(data)}`);
@@ -92,11 +92,11 @@ async function getGoogleAccessToken(env) {
 // -------------------------
 // Append Row
 // -------------------------
-async function appendRow(token, env, values) {
+async function appendRow(token, env, tab, values) {
   if (!env.GOOGLE_SHEETS_ID) throw new Error("Missing spreadsheet ID");
 
   const res = await fetch(
-    `https://sheets.googleapis.com/v4/spreadsheets/${env.GOOGLE_SHEETS_ID}/values/A2:append?valueInputOption=USER_ENTERED`,
+    `https://sheets.googleapis.com/v4/spreadsheets/${env.GOOGLE_SHEETS_ID}/values/${tab}!A2:append?valueInputOption=USER_ENTERED`,
     {
       method: "POST",
       headers: {
