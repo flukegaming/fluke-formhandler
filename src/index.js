@@ -116,9 +116,39 @@ async function appendRow(token, env, tab, values) {
 // -------------------------
 // Zoho Email (stub)
 // -------------------------
-async function sendEmail(env, subject, body) {
-  if (!env.ZOHO_TOKEN) return; // stub, do nothing for now
-  console.log(`Would send Zoho email: ${subject} — ${body}`);
+import { SMTPClient } from "https://cdn.jsdelivr.net/npm/emailjs-smtp-client@1.1.1/dist/smtp-client.min.js";
+
+export async function sendEmail(env, subject, body) {
+  if (!env.ZOHO_APP_PASSWORD || !env.ZOHO_EMAIL_SENDER || !env.ZOHO_EMAIL_RECIPIENT) {
+    console.warn("Zoho email not configured, skipping sendEmail()");
+    return;
+  }
+
+  const client = new SMTPClient("smtp.zoho.com", 465, { tls: true });
+
+  try {
+    await client.connect();
+    await client.login(env.ZOHO_EMAIL_SENDER, env.ZOHO_APP_PASSWORD);
+
+    const message = [
+      `From: ${env.ZOHO_EMAIL_SENDER}`,
+      `To: ${env.ZOHO_EMAIL_RECIPIENT}`,
+      `Subject: ${subject}`,
+      "",
+      body,
+    ].join("\r\n");
+
+    await client.send({
+      from: env.ZOHO_EMAIL_SENDER,
+      to: env.ZOHO_EMAIL_RECIPIENT,
+      raw: message,
+    });
+
+    console.log(`Email sent: ${subject}`);
+    await client.quit();
+  } catch (err) {
+    console.error("sendEmail() failed:", err);
+  }
 }
 
 // -------------------------

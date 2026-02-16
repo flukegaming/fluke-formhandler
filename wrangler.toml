@@ -5,9 +5,8 @@ compatibility_date = "2026-02-15"
 [vars]
 GOOGLE_SHEETS_ID = "1NTXywhb6hidda8Kju1_l8GBDLxdzu8sE0MXNOQtgxS4"
 GOOGLE_CLIENT_EMAIL = "raid-form-bot@fluke-gaming.iam.gserviceaccount.com"
-ZOHO_TOKEN = ""
-ZOHO_EMAIL_SENDER = ""
-ZOHO_EMAIL_RECIPIENT = ""
+ZOHO_EMAIL_SENDER = "raidmaster@flukegaming.com"
+ZOHO_EMAIL_RECIPIENT = "flukegaming57@gmail.com"
 
 [observability]
 [observability.logs]
