@@ -3,8 +3,11 @@ main = "src/index.js"
 compatibility_date = "2026-02-15"
 
 [vars]
-SHEETS_ID = "1NTXywhb6hidda8Kju1_l8GBDLxdzu8sE0MXNOQtgxS4"
-SERVICE_ACCOUNT_EMAIL = "raid-form-bot@fluke-gaming.iam.gserviceaccount.com"
+GOOGLE_SHEETS_ID = "1NTXywhb6hidda8Kju1_l8GBDLxdzu8sE0MXNOQtgxS4"
+GOOGLE_SVCACCT_EMAIL = "raid-form-bot@fluke-gaming.iam.gserviceaccount.com"
+ZOHO_TOKEN = ""
+ZOHO_EMAIL_SENDER = ""
+ZOHO_EMAIL_RECIPIENT = ""
 
 [observability]
 [observability.logs]
