@@ -4,11 +4,21 @@ export default {
       return new Response("POST only", { status: 405 });
     }
 
+    const now = new Date();
+    const timestamp = `${now.getFullYear()}-${(now.getMonth()+1).toString().padStart(2,'0')}-${now.getDate().toString().padStart(2,'0')} ${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}:${now.getSeconds().toString().padStart(2,'0')}`;
+    // 2026-02-16 04:56:42
+
     const data = [
-      new Date().toISOString(),
-      "Test Player",
-      "Tank",
-      "Test notes"
+      timestamp,
+      data.Season || '',
+      data.Name || '',
+      data.MainClass || '',
+      data.MainSpec || '',
+      data.MainOffspec || '',
+      data.AltClass || '',
+      data.AltSpec || '',
+      data.AltOffspec || '',
+      data.Comments || ''
     ];
 
     let appendStatus = "not attempted";
@@ -22,16 +32,29 @@ export default {
       try {
         await appendRow(token, env, "signup_data", data);
         appendStatus = "success";
-      } catch (err) {
-        appendStatus = `failed: ${err.message}`;
-      }
 
-      // 2️⃣ send success email
-      try {
-        await sendEmail(env, "Raid Form Submission Success", `Row added: ${JSON.stringify(data)}`);
-        emailStatus = "success";
-      } catch (err) {
-        emailStatus = `failed: ${err.message}`;
+        // 2️⃣ send success email
+        try {
+          await sendEmail(env, "Raid Form Submission Success", `Row added: ${JSON.stringify(data)}`);
+          emailStatus = "success";
+        } catch (err) {
+          emailStatus = `failed: ${err.message}`;
+        }
+
+      } catch (appendErr) {
+        appendStatus = `failed: ${appendErr.message}`;
+
+        // Send failure email if append failed
+        try {
+          await sendEmail(
+            env,
+            "Raid Form Submission Failed",
+            `Row append failed: ${appendErr.message}\nData attempted: ${JSON.stringify(data)}`
+          );
+          emailStatus = "failure email sent";
+        } catch (emailErr) {
+          emailStatus = `failed to send failure email: ${emailErr.message}`;
+        }
       }
 
       return new Response(
