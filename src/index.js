@@ -28,7 +28,7 @@ export default {
       // import key for signing
       const cryptoKey = await crypto.subtle.importKey(
         "pkcs8",
-        pemToArrayBuffer(env.GOOGLE_PRIVATE_KEY),
+        pemToArrayBuffer(privateKey),
         { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
         false,
         ["sign"]
