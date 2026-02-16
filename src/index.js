@@ -114,40 +114,67 @@ async function appendRow(token, env, tab, values) {
 }
 
 // -------------------------
-// Zoho Email (stub)
+// Zoho Email (REST)
 // -------------------------
-import { SMTPClient } from "https://cdn.jsdelivr.net/npm/emailjs-smtp-client@1.1.1/dist/smtp-client.min.js";
-
-export async function sendEmail(env, subject, body) {
-  if (!env.ZOHO_APP_PASSWORD || !env.ZOHO_EMAIL_SENDER || !env.ZOHO_EMAIL_RECIPIENT) {
-    console.warn("Zoho email not configured, skipping sendEmail()");
+async function sendEmail(env, subject, body) {
+  // Check required secrets/vars
+  if (
+    !env.ZOHO_CLIENT_ID ||
+    !env.ZOHO_CLIENT_SECRET ||
+    !env.ZOHO_OAUTH_REFRESH_TOKEN ||
+    !env.ZOHO_ACCOUNT_ID ||
+    !env.ZOHO_EMAIL_SENDER ||
+    !env.ZOHO_EMAIL_RECIPIENT
+  ) {
+    console.warn("Zoho email not fully configured, skipping sendEmail()");
     return;
   }
 
-  const client = new SMTPClient("smtp.zoho.com", 465, { tls: true });
-
   try {
-    await client.connect();
-    await client.login(env.ZOHO_EMAIL_SENDER, env.ZOHO_APP_PASSWORD);
-
-    const message = [
-      `From: ${env.ZOHO_EMAIL_SENDER}`,
-      `To: ${env.ZOHO_EMAIL_RECIPIENT}`,
-      `Subject: ${subject}`,
-      "",
-      body,
-    ].join("\r\n");
-
-    await client.send({
-      from: env.ZOHO_EMAIL_SENDER,
-      to: env.ZOHO_EMAIL_RECIPIENT,
-      raw: message,
+    // 1️⃣ Get a short-lived access token from refresh token
+    const tokenParams = new URLSearchParams({
+      refresh_token: env.ZOHO_OAUTH_REFRESH_TOKEN,
+      client_id: env.ZOHO_CLIENT_ID,
+      client_secret: env.ZOHO_CLIENT_SECRET,
+      grant_type: "refresh_token",
     });
 
-    console.log(`Email sent: ${subject}`);
-    await client.quit();
+    const tokenRes = await fetch(`https://accounts.zoho.com/oauth/v2/token?${tokenParams.toString()}`, {
+      method: "POST",
+    });
+
+    const tokenData = await tokenRes.json();
+    if (!tokenData.access_token) throw new Error("Failed to get Zoho access token");
+
+    const accessToken = tokenData.access_token;
+
+    // 2️⃣ Send email via Zoho Mail REST API
+    const apiUrl = `https://mail.zoho.com/api/accounts/${env.ZOHO_ACCOUNT_ID}/messages`;
+
+    const payload = {
+      fromAddress: env.ZOHO_EMAIL_SENDER,
+      toAddress: [env.ZOHO_EMAIL_RECIPIENT],
+      subject,
+      content: body,
+    };
+
+    const res = await fetch(apiUrl, {
+      method: "POST",
+      headers: {
+        "Authorization": `Zoho-oauthtoken ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) {
+      const text = await res.text();
+      console.error("Zoho email failed:", text);
+    } else {
+      console.log(`Zoho email sent: ${subject}`);
+    }
   } catch (err) {
-    console.error("sendEmail() failed:", err);
+    console.error("sendEmail() error:", err);
   }
 }
 
