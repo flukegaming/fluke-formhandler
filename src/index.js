@@ -28,7 +28,7 @@ export default {
       // import key for signing
       const cryptoKey = await crypto.subtle.importKey(
         "pkcs8",
-        str2ab(privateKey),
+        pemToArrayBuffer(env.GOOGLE_PRIVATE_KEY),
         { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
         false,
         ["sign"]
@@ -62,10 +62,22 @@ export default {
   }
 };
 
-// helper function
+// helper functions
 function str2ab(str) {
   const buf = new ArrayBuffer(str.length);
   const view = new Uint8Array(buf);
   for (let i = 0; i < str.length; i++) view[i] = str.charCodeAt(i);
+  return buf;
+}
+
+function pemToArrayBuffer(pem) {
+  const b64 = pem
+    .replace(/-----BEGIN PRIVATE KEY-----/g, "")
+    .replace(/-----END PRIVATE KEY-----/g, "")
+    .replace(/\s+/g, "");
+  const binary = atob(b64);
+  const buf = new ArrayBuffer(binary.length);
+  const view = new Uint8Array(buf);
+  for (let i = 0; i < binary.length; i++) view[i] = binary.charCodeAt(i);
   return buf;
 }
