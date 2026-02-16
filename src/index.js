@@ -163,7 +163,7 @@ async function sendEmail(env, subject, body) {
 
     const payload = {
       fromAddress: env.ZOHO_EMAIL_SENDER.trim(),
-      toAddress: [env.ZOHO_EMAIL_RECIPIENT.trim()],
+      toAddress: env.ZOHO_EMAIL_RECIPIENT.trim(),
       subject,
       content: body,
     };
