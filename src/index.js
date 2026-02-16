@@ -1,14 +1,45 @@
 export default {
   async fetch(req, env) {
     try {
-      const tokenJson = await getGoogleAccessToken(env);
-      return new Response(JSON.stringify(tokenJson, null, 2), {
-        headers: { "Content-Type": "application/json" },
-      });
+      if (req.method !== "POST") {
+        return new Response("POST only", { status: 405 });
+      }
+
+      // Example payload — in real use, pull from req.json()
+      const newRow = [
+        new Date().toISOString(),
+        "Test Player",
+        "Tank",
+        "Test notes"
+      ];
+
+      // Get access token (reuse your working function)
+      const token = await getGoogleAccessToken(env);
+
+      // Append row to sheet
+      const sheetName = "signup_data";
+      const appendRes = await fetch(
+        `https://sheets.googleapis.com/v4/spreadsheets/${env.GOOGLE_SHEETS_ID}/values/${sheetName}!A2:append?valueInputOption=USER_ENTERED`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ values: [newRow] })
+        }
+      );
+
+      if (!appendRes.ok) {
+        const text = await appendRes.text();
+        return new Response(`Append failed: ${text}`, { status: 500 });
+      }
+
+      return new Response("Row appended successfully!");
     } catch (err) {
-      return new Response(err.message, { status: 500 });
+      return new Response(`Error: ${err.message}`, { status: 500 });
     }
-  },
+  }
 };
 
 // === HELPER FUNCTIONS ===
