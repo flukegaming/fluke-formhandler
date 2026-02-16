@@ -133,7 +133,6 @@ async function appendRow(token, env, tab, values) {
 // Zoho Email (REST)
 // -------------------------
 async function sendEmail(env, subject, body) {
-  // Check required secrets/vars
   if (
     !env.ZOHO_CLIENT_ID ||
     !env.ZOHO_CLIENT_SECRET ||
@@ -146,7 +145,6 @@ async function sendEmail(env, subject, body) {
   }
 
   try {
-    // 1️⃣ Get a short-lived access token from refresh token
     const tokenParams = new URLSearchParams({
       refresh_token: env.ZOHO_OAUTH_REFRESH_TOKEN,
       client_id: env.ZOHO_CLIENT_ID,
@@ -163,23 +161,17 @@ async function sendEmail(env, subject, body) {
 
     const accessToken = tokenData.access_token;
 
-    // 2️⃣ Send email via Zoho Mail REST API
-    const apiUrl = `https://mail.zoho.com/api/accounts/${env.ZOHO_ACCOUNT_ID}/messages`;
-
-    const zohoSender = env.ZOHO_EMAIL_SENDER.trim();
-    const zohoRecipient = env.ZOHO_EMAIL_RECIPIENT.trim();
-
     const payload = {
-      fromAddress: zohoSender,
-      toAddress: [zohoRecipient],
+      fromAddress: env.ZOHO_EMAIL_SENDER.trim(),
+      toAddress: [env.ZOHO_EMAIL_RECIPIENT.trim()],
       subject,
       content: body,
     };
 
-    const res = await fetch(apiUrl, {
+    const res = await fetch(`https://mail.zoho.com/api/accounts/${env.ZOHO_ACCOUNT_ID}/messages`, {
       method: "POST",
       headers: {
-        "Authorization": `Zoho-oauthtoken ${accessToken}`,
+        Authorization: `Zoho-oauthtoken ${accessToken}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify(payload),
@@ -187,10 +179,12 @@ async function sendEmail(env, subject, body) {
 
     if (!res.ok) {
       const text = await res.text();
-      throw new Error("Zoho email failed:", text);
+      throw new Error(`Zoho email failed: ${text}`);
     }
+
+    return await res.json();
   } catch (err) {
-    throw new Error("sendEmail() error:", err);
+    throw new Error(`sendEmail() error: ${err.message || err}`);
   }
 }
 
