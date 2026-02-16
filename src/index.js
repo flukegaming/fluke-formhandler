@@ -142,8 +142,7 @@ async function sendEmail(env, subject, body) {
     !env.ZOHO_EMAIL_SENDER ||
     !env.ZOHO_EMAIL_RECIPIENT
   ) {
-    console.warn("Zoho email not fully configured, skipping sendEmail()");
-    return;
+    throw new Error("Zoho email not fully configured, skipping sendEmail()");
   }
 
   try {
@@ -188,12 +187,10 @@ async function sendEmail(env, subject, body) {
 
     if (!res.ok) {
       const text = await res.text();
-      console.error("Zoho email failed:", text);
-    } else {
-      console.log(`Zoho email sent: ${subject}`);
+      throw new Error("Zoho email failed:", text);
     }
   } catch (err) {
-    console.error("sendEmail() error:", err);
+    throw new Error("sendEmail() error:", err);
   }
 }
 
