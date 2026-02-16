@@ -1,34 +1,50 @@
 export default {
   async fetch(req, env) {
+    if (req.method !== "POST") {
+      return new Response("POST only", { status: 405 });
+    }
+
+    const data = [
+      new Date().toISOString(),
+      "Test Player",
+      "Tank",
+      "Test notes"
+    ];
+
+    let appendStatus = "not attempted";
+    let emailStatus = "not attempted";
+
     try {
-      if (req.method !== "POST") {
-        return new Response("POST only", { status: 405 });
-      }
-
-      // Example payload — replace with req.json() in production
-      const data = [
-        new Date().toISOString(),
-        "Test Player",
-        "Tank",
-        "Test notes"
-      ];
-
-      // 1️⃣ get token
       const tokenJson = await getGoogleAccessToken(env);
       const token = tokenJson.access_token;
 
-      // 2️⃣ append row
-      await appendRow(token, env, "signup_data", data);
+      // 1️⃣ append row
+      try {
+        await appendRow(token, env, "signup_data", data);
+        appendStatus = "success";
+      } catch (err) {
+        appendStatus = `failed: ${err.message}`;
+      }
 
-      // 3️⃣ send notification email (stub for now)
-      await sendEmail(env, "Raid Form Submission Success", `Row added: ${JSON.stringify(data)}`);
+      // 2️⃣ send success email
+      try {
+        await sendEmail(env, "Raid Form Submission Success", `Row added: ${JSON.stringify(data)}`);
+        emailStatus = "success";
+      } catch (err) {
+        emailStatus = `failed: ${err.message}`;
+      }
 
-      return new Response("Row appended and email sent!");
+      return new Response(
+        JSON.stringify({ appendStatus, emailStatus }, null, 2),
+        { headers: { "Content-Type": "application/json" } }
+      );
+
     } catch (err) {
-      // ⚠️ send failure email (stub for now)
-      await sendEmail(env, "Raid Form Submission Failed", err.message);
-
-      return new Response(`Error: ${err.message}`, { status: 500 });
+      // fallback in case getGoogleAccessToken itself fails
+      return new Response(
+        JSON.stringify({ appendStatus, emailStatus, error: err.message }, null, 2),
+        { status: 500, headers: { "Content-Type": "application/json" } }
+      );
     }
   }
 };
@@ -151,9 +167,12 @@ async function sendEmail(env, subject, body) {
     // 2️⃣ Send email via Zoho Mail REST API
     const apiUrl = `https://mail.zoho.com/api/accounts/${env.ZOHO_ACCOUNT_ID}/messages`;
 
+    const zohoSender = env.ZOHO_EMAIL_SENDER.trim();
+    const zohoRecipient = env.ZOHO_EMAIL_RECIPIENT.trim();
+
     const payload = {
-      fromAddress: env.ZOHO_EMAIL_SENDER,
-      toAddress: [env.ZOHO_EMAIL_RECIPIENT],
+      fromAddress: zohoSender,
+      toAddress: [zohoRecipient],
       subject,
       content: body,
     };
