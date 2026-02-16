@@ -5,56 +5,37 @@ export default {
         return new Response("POST only", { status: 405 });
       }
 
-      // Example payload — in real use, pull from req.json()
-      const newRow = [
+      // Example payload — replace with req.json() in production
+      const data = [
         new Date().toISOString(),
         "Test Player",
         "Tank",
         "Test notes"
       ];
 
-      // Get access token (reuse your working function)
-      const token = await getGoogleAccessToken(env);
+      // 1️⃣ get token
+      const tokenJson = await getGoogleAccessToken(env);
+      const token = tokenJson.access_token;
 
-      // Append row to sheet
-      const sheetName = "signup_data";
-      const appendRes = await fetch(
-        `https://sheets.googleapis.com/v4/spreadsheets/${env.GOOGLE_SHEETS_ID}/values/${sheetName}!A2:append?valueInputOption=USER_ENTERED`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({ values: [newRow] })
-        }
-      );
+      // 2️⃣ append row
+      await appendRow(token, env, data);
 
-      if (!appendRes.ok) {
-        const text = await appendRes.text();
-        return new Response(`Append failed: ${text}`, { status: 500 });
-      }
+      // 3️⃣ send notification email (stub for now)
+      await sendEmail(env, "Raid Form Submission Success", `Row added: ${JSON.stringify(data)}`);
 
-      return new Response("Row appended successfully!");
+      return new Response("Row appended and email sent!");
     } catch (err) {
+      // ⚠️ send failure email (stub for now)
+      await sendEmail(env, "Raid Form Submission Failed", err.message);
+
       return new Response(`Error: ${err.message}`, { status: 500 });
     }
   }
 };
 
-// === HELPER FUNCTIONS ===
-function pemToArrayBuffer(pem) {
-  const b64 = pem
-    .replace(/-----BEGIN PRIVATE KEY-----/g, "")
-    .replace(/-----END PRIVATE KEY-----/g, "")
-    .replace(/\s+/g, "");
-  const binary = atob(b64);
-  const buf = new ArrayBuffer(binary.length);
-  const view = new Uint8Array(buf);
-  for (let i = 0; i < binary.length; i++) view[i] = binary.charCodeAt(i);
-  return buf;
-}
-
+// -------------------------
+// Google Auth
+// -------------------------
 async function getGoogleAccessToken(env) {
   if (!env.GOOGLE_CLIENT_EMAIL || !env.GOOGLE_PRIVATE_KEY) {
     throw new Error("Missing service account secrets");
@@ -80,7 +61,6 @@ async function getGoogleAccessToken(env) {
 
   const unsigned = `${enc(header)}.${enc(claim)}`;
 
-  // import key for signing
   const cryptoKey = await crypto.subtle.importKey(
     "pkcs8",
     pemToArrayBuffer(privateKey),
@@ -107,4 +87,51 @@ async function getGoogleAccessToken(env) {
   });
 
   return tokenRes.json();
+}
+
+// -------------------------
+// Append Row
+// -------------------------
+async function appendRow(token, env, values) {
+  if (!env.GOOGLE_SHEETS_ID) throw new Error("Missing spreadsheet ID");
+
+  const res = await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${env.GOOGLE_SHEETS_ID}/values/A2:append?valueInputOption=USER_ENTERED`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ values: [values] }),
+    }
+  );
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Google Sheets append failed: ${text}`);
+  }
+}
+
+// -------------------------
+// Zoho Email (stub)
+// -------------------------
+async function sendEmail(env, subject, body) {
+  if (!env.ZOHO_TOKEN) return; // stub, do nothing for now
+  console.log(`Would send Zoho email: ${subject} — ${body}`);
+}
+
+// -------------------------
+// PEM → ArrayBuffer
+// -------------------------
+function pemToArrayBuffer(pem) {
+  const b64 = pem
+    .replace(/-----BEGIN PRIVATE KEY-----/g, "")
+    .replace(/-----END PRIVATE KEY-----/g, "")
+    .replace(/\s+/g, "");
+  const binary = atob(b64);
+  const buf = new ArrayBuffer(binary.length);
+  const view = new Uint8Array(buf);
+  for (let i = 0; i < binary.length; i++) view[i] = binary.charCodeAt(i);
+  return buf;
 }
