@@ -1,24 +1,29 @@
 export default {
   async fetch(req, env) {
+    if (req.method === "OPTIONS") {
+      return corsResponse(JSON.stringify({}), req, 204);
+    }
+
     if (req.method !== "POST") {
-      return new Response("POST only", { status: 405 });
+      return corsResponse(JSON.stringify({ error: "POST only" }), req, 405);
     }
 
     const now = new Date();
     const timestamp = `${now.getFullYear()}-${(now.getMonth()+1).toString().padStart(2,'0')}-${now.getDate().toString().padStart(2,'0')} ${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}:${now.getSeconds().toString().padStart(2,'0')}`;
     // 2026-02-16 04:56:42
 
+    const signup = await req.json();
     const data = [
       timestamp,
-      data.Season || '',
-      data.Name || '',
-      data.MainClass || '',
-      data.MainSpec || '',
-      data.MainOffspec || '',
-      data.AltClass || '',
-      data.AltSpec || '',
-      data.AltOffspec || '',
-      data.Comments || ''
+      signup.Season || '',
+      signup.Name || '',
+      signup.MainClass || '',
+      signup.MainSpec || '',
+      signup.MainOffspec || '',
+      signup.AltClass || '',
+      signup.AltSpec || '',
+      signup.AltOffspec || '',
+      signup.Comments || ''
     ];
 
     let appendStatus = "not attempted";
@@ -57,20 +62,37 @@ export default {
         }
       }
 
-      return new Response(
-        JSON.stringify({ appendStatus, emailStatus }, null, 2),
-        { headers: { "Content-Type": "application/json" } }
-      );
+      return corsResponse(JSON.stringify({ appendStatus, emailStatus }), req);
 
     } catch (err) {
       // fallback in case getGoogleAccessToken itself fails
-      return new Response(
-        JSON.stringify({ appendStatus, emailStatus, error: err.message }, null, 2),
-        { status: 500, headers: { "Content-Type": "application/json" } }
-      );
+      return corsResponse(JSON.stringify({ appendStatus: "failed", emailStatus: "failed", error: err.message }), req, 500);
     }
   }
 };
+
+// -------------------------
+// corsResponse header
+// -------------------------
+const ALLOWED_ORIGINS = [
+  "https://flukegaming.com",
+  "https://test.flukegaming.com"
+];
+
+function corsResponse(body, req, status = 200) {
+  const origin = req.headers.get("Origin");
+  const headers = {
+    "Content-Type": "application/json",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type"
+  };
+
+  if (ALLOWED_ORIGINS.includes(origin)) {
+    headers["Access-Control-Allow-Origin"] = origin;
+  }
+
+  return new Response(body, { status, headers });
+}
 
 // -------------------------
 // Google Auth
