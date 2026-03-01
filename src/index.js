@@ -24,15 +24,15 @@ export default {
 
       const data = [
         timestamp,
-        signup.Season || '',
-        signup.Name || '',
-        signup.MainClass || '',
-        signup.MainSpec || '',
-        signup.MainOffspec || '',
-        signup.AltClass || '',
-        signup.AltSpec || '',
-        signup.AltOffspec || '',
-        signup.Comments || ''
+        signup.season || '',
+        signup.character || '',
+        signup.mainClass || '',
+        signup.mainSpec || '',
+        signup.mainOffspec || '',
+        signup.altClass || '',
+        signup.altSpec || '',
+        signup.altOffspec || '',
+        signup.comments || ''
       ];
 
       const tokenJson = await getGoogleAccessToken(env);
